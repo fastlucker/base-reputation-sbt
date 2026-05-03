@@ -2,7 +2,7 @@
 
 import { createConfig, http } from "wagmi";
 import { base, baseSepolia } from "wagmi/chains";
-import { baseAccount, injected } from "wagmi/connectors";
+import { baseAccount, injected } from "@wagmi/connectors";
 
 const selectedChain =
   process.env.NEXT_PUBLIC_CHAIN === "base" ? base : baseSepolia;
