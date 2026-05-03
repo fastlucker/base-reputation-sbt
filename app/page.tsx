@@ -138,9 +138,11 @@ args: [
         <h1 className="text-3xl font-bold tracking-tight">Base Reputation Score</h1>
 
         <p className="mt-3 text-sm leading-6 text-white/70">
-          Enter your Base wallet address to calculate your reputation score, then mint a non-transferable Soulbound Token using your Base App smart wallet.
+          Your onchain resume on Base. Analyze any wallet, get a reputation score, and mint it onchain.
         </p>
-
+<p className="mt-2 text-xs text-white/50">
+  Your activity. Your reputation. Your proof.
+</p>
         <div className="mt-6 space-y-3">
           <label className="text-sm font-medium text-white/80">Wallet address to evaluate</label>
 
