@@ -44,6 +44,15 @@ export default function Home() {
     return getAddress(walletInput);
   }, [walletInput]);
 
+  const shareText = score
+    ? `I scored ${score.score} (${score.category}) on Base.\n\nCheck your onchain resume 👇`
+    : "";
+
+  const shareUrl =
+    score && typeof window !== "undefined"
+      ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.origin)}`
+      : "#";
+
   async function calculateScore() {
     setError(null);
     setTxHash(null);
@@ -111,16 +120,16 @@ export default function Home() {
         abi: scoreContractAbi,
         functionName: "mintReputationScore",
         chainId: selectedChain.id,
-args: [
-  score.wallet,
-  BigInt(score.score),
-  score.category,
-  score.scoreHash,
-  score.version,
-  BigInt(attestation.deadline),
-  attestation.nonce,
-  attestation.signature
-],
+        args: [
+          score.wallet,
+          BigInt(score.score),
+          score.category,
+          score.scoreHash,
+          score.version,
+          BigInt(attestation.deadline),
+          attestation.nonce,
+          attestation.signature
+        ],
         value: parseEther(MINT_PRICE_ETH)
       });
 
@@ -140,9 +149,11 @@ args: [
         <p className="mt-3 text-sm leading-6 text-white/70">
           Your onchain resume on Base. Analyze any wallet, get a reputation score, and mint it onchain.
         </p>
-<p className="mt-2 text-xs text-white/50">
-  Your activity. Your reputation. Your proof.
-</p>
+
+        <p className="mt-2 text-xs text-white/50">
+          Your activity. Your reputation. Your proof.
+        </p>
+
         <div className="mt-6 space-y-3">
           <label className="text-sm font-medium text-white/80">Wallet address to evaluate</label>
 
@@ -175,6 +186,15 @@ args: [
 
               <p className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">{score.version}</p>
             </div>
+
+            <a
+              href={shareUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white"
+            >
+              Share on X
+            </a>
 
             <div className="mt-5 rounded-2xl bg-white/5 p-3">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/50">
