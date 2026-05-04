@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getAddress, isAddress, parseEther } from "viem";
 import { base, baseSepolia } from "wagmi/chains";
 import { useAccount, useChainId, useConnect, useWriteContract } from "wagmi";
@@ -13,6 +13,11 @@ type ScoreResponse = {
   breakdown: Record<string, number | string>;
   scoreHash: `0x${string}`;
   version: string;
+};
+
+type LeaderboardEntry = {
+  wallet: string;
+  score: number;
 };
 
 const categories = [
@@ -28,6 +33,7 @@ const categories = [
 export default function Home() {
   const [walletInput, setWalletInput] = useState("");
   const [score, setScore] = useState<ScoreResponse | null>(null);
+  const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isScoring, setIsScoring] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -53,6 +59,20 @@ export default function Home() {
       ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.origin)}`
       : "#";
 
+  async function refreshLeaderboard() {
+    try {
+      const res = await fetch("/api/leaderboard");
+      const data = await res.json();
+      setLeaders(data.leaderboard || []);
+    } catch {
+      setLeaders([]);
+    }
+  }
+
+  useEffect(() => {
+    refreshLeaderboard();
+  }, []);
+
   async function calculateScore() {
     setError(null);
     setTxHash(null);
@@ -75,6 +95,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Error while calculating the score.");
 
       setScore(data);
+      await refreshLeaderboard();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -232,6 +253,33 @@ export default function Home() {
             </div>
 
             <p className="mt-4 break-all text-xs text-white/40">Hash: {score.scoreHash}</p>
+          </div>
+        )}
+
+        {leaders.length > 0 && (
+          <div className="mt-6 rounded-3xl border border-white/10 bg-black/30 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold text-white/70">Leaderboard</p>
+              <p className="text-xs text-white/40">Top 20</p>
+            </div>
+
+            <div className="space-y-2">
+              {leaders.map((leader, index) => (
+                <div
+                  key={leader.wallet}
+                  className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 text-white/40">#{index + 1}</span>
+                    <span className="font-medium text-white/80">
+                      {leader.wallet.slice(0, 6)}...{leader.wallet.slice(-4)}
+                    </span>
+                  </div>
+
+                  <span className="font-bold text-blue-200">{leader.score}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

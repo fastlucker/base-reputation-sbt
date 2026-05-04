@@ -1,3 +1,4 @@
+import { addScore } from "@/lib/leaderboard";
 import { scoreLimiter } from "@/lib/ratelimit";
 import { NextResponse } from "next/server";
 import { getAddress, isAddress, keccak256, stringToBytes } from "viem";
@@ -120,6 +121,7 @@ function calculateNativeVolumeEth(transfers: AlchemyTransfer[]) {
 
 function calculateScore(transfers: AlchemyTransfer[]) {
   const uniqueTxHashes = new Set(transfers.map((tx) => tx.hash));
+
   const nativeTxs = transfers.filter((tx) => tx.category === "external").length;
   const tokenTxs = transfers.filter((tx) =>
     ["erc20", "erc721", "erc1155"].includes(tx.category)
@@ -137,10 +139,13 @@ function calculateScore(transfers: AlchemyTransfer[]) {
 
   const nativeVolumeEth = calculateNativeVolumeEth(transfers);
 
-  // Approximation V1: bridge activity is inferred from large ETH movements.
-  // We can refine this later with known bridge contract addresses.
   const bridgeVolumeEth = transfers
-    .filter((tx) => tx.category === "external" && tx.asset === "ETH" && Number(tx.value || 0) >= 0.01)
+    .filter(
+      (tx) =>
+        tx.category === "external" &&
+        tx.asset === "ETH" &&
+        Number(tx.value || 0) >= 0.01
+    )
     .reduce((sum, tx) => sum + Number(tx.value || 0), 0);
 
   const walletAgeScore = Math.min(150, walletAgeDays * 0.17);
@@ -156,7 +161,6 @@ function calculateScore(transfers: AlchemyTransfer[]) {
   const volumeScore = Math.min(100, Math.log10(nativeVolumeEth + 1) * 45);
   const bridgeScore = Math.min(75, Math.log10(bridgeVolumeEth + 1) * 45);
 
-  // Base ENS will be added later.
   const baseEnsScore = 0;
 
   const spamRatio =
@@ -201,15 +205,16 @@ function calculateScore(transfers: AlchemyTransfer[]) {
 
 export async function POST(request: Request) {
   try {
-const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-const { success } = await scoreLimiter.limit(ip);
+    const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+    const { success } = await scoreLimiter.limit(ip);
 
-if (!success) {
-  return NextResponse.json(
-    { error: "Rate limit exceeded. Please try again later." },
-    { status: 429 }
-  );
-}
+    if (!success) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json().catch(() => null);
     const wallet = body?.wallet;
 
@@ -220,6 +225,8 @@ if (!success) {
     const scoredWallet = getAddress(wallet);
     const transfers = await fetchAlchemyTransfers(scoredWallet);
     const score = calculateScore(transfers);
+
+    await addScore(scoredWallet, score.total);
 
     const scoreHash = keccak256(
       stringToBytes(JSON.stringify({ wallet: scoredWallet, score, version: VERSION }))
