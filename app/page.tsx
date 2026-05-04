@@ -30,6 +30,16 @@ const categories = [
   { label: "Onchain Legend", range: "900–1000" }
 ];
 
+const badgeMap: Record<string, string> = {
+  Noob: "🌱",
+  Explorer: "🧭",
+  Grinder: "⚒️",
+  "Base Native": "🔵",
+  "Power User": "⚡",
+  Elite: "👑",
+  "Onchain Legend": "🔥"
+};
+
 export default function Home() {
   const [walletInput, setWalletInput] = useState("");
   const [score, setScore] = useState<ScoreResponse | null>(null);
@@ -200,9 +210,10 @@ export default function Home() {
               <div>
                 <p className="text-sm text-white/60">Score</p>
                 <p className="text-5xl font-black">{score.score}</p>
-                <p className="mt-2 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
-                  {score.category}
-                </p>
+                <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
+  <span>{badgeMap[score.category]}</span>
+  <span>{score.category}</span>
+</p>
               </div>
 
               <p className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">{score.version}</p>
@@ -235,7 +246,9 @@ export default function Home() {
                           : "bg-black/20 text-white/50"
                       }`}
                     >
-                      <span className="font-semibold">{tier.label}</span>
+                      <span className="font-semibold">
+  {badgeMap[tier.label]} {tier.label}
+</span>
                       <span>{tier.range}</span>
                     </div>
                   );
