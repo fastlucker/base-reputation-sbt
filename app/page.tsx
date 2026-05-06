@@ -1,5 +1,5 @@
 "use client";
-
+import { useSwitchChain } from "wagmi";
 import { useEffect, useMemo, useState } from "react";
 import { getAddress, isAddress, parseEther } from "viem";
 import { base, baseSepolia } from "wagmi/chains";
@@ -52,6 +52,7 @@ export default function Home() {
   const chainId = useChainId();
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { writeContractAsync, isPending: isMinting } = useWriteContract();
+const { switchChainAsync } = useSwitchChain();
 
   const selectedChain = process.env.NEXT_PUBLIC_CHAIN === "base" ? base : baseSepolia;
 
@@ -128,6 +129,9 @@ export default function Home() {
     }
 
     try {
+if (chainId !== selectedChain.id) {
+  await switchChainAsync({ chainId: selectedChain.id });
+}
       const attestationRes = await fetch("/api/attestation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -316,7 +320,11 @@ export default function Home() {
               Connected payer: {address}
             </p>
           )}
-
+{chainId !== selectedChain.id && (
+  <p className="mt-2 rounded-xl bg-yellow-500/10 p-3 text-xs text-yellow-200">
+    Please switch your wallet to Base before minting.
+  </p>
+)}
           <button
             onClick={mintScore}
             disabled={!score || !isConnected || isMinting}
