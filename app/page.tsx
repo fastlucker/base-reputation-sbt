@@ -141,13 +141,14 @@ export default function Home() {
     }
 
     try {
-      if (window.ethereum && chainId !== selectedChain.id) {
+ if (window.ethereum && chainId !== selectedChain.id) {
   await window.ethereum.request({
     method: "wallet_switchEthereumChain",
     params: [{ chainId: "0x2105" }]
   });
-}
 
+  return;
+}
       const attestationRes = await fetch("/api/attestation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,7 +190,10 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Transaction rejected or failed.");
     }
   }
-
+console.log("chainId", chainId);
+console.log("selectedChain", selectedChain.id);
+console.log("isConnected", isConnected);
+console.log("isWrongChain", isWrongChain);
   return (
     <main className="min-h-screen px-5 py-8">
       <section className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
