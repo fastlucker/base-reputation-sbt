@@ -67,10 +67,10 @@ export default function Home() {
     return getAddress(walletInput);
   }, [walletInput]);
 
-  const isWrongChain =
+const isWrongChain =
   isConnected &&
   typeof chainId !== "undefined" &&
-  chainId !== 8453;
+  chainId !== selectedChain.id;
 
   const shareText = score
     ? `I scored ${score.score} (${score.category}) on Base.\n\nCheck your onchain resume 👇`
@@ -141,12 +141,9 @@ export default function Home() {
     }
 
     try {
- if (window.ethereum && chainId !== selectedChain.id) {
-  await window.ethereum.request({
-    method: "wallet_switchEthereumChain",
-    params: [{ chainId: "0x2105" }]
-  });
-
+if (chainId !== selectedChain.id) {
+  await switchChainAsync({ chainId: selectedChain.id });
+  setError("Network switched to Base. Please click mint again.");
   return;
 }
       const attestationRes = await fetch("/api/attestation", {
@@ -190,10 +187,7 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Transaction rejected or failed.");
     }
   }
-console.log("chainId", chainId);
-console.log("selectedChain", selectedChain.id);
-console.log("isConnected", isConnected);
-console.log("isWrongChain", isWrongChain);
+
   return (
     <main className="min-h-screen px-5 py-8">
       <section className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
