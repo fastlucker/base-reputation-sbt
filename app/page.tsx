@@ -67,7 +67,10 @@ export default function Home() {
     return getAddress(walletInput);
   }, [walletInput]);
 
-  const isWrongChain = isConnected && Boolean(chainId) && chainId !== selectedChain.id;
+  const isWrongChain =
+  isConnected &&
+  typeof chainId !== "undefined" &&
+  chainId !== 8453;
 
   const shareText = score
     ? `I scored ${score.score} (${score.category}) on Base.\n\nCheck your onchain resume 👇`
@@ -138,9 +141,12 @@ export default function Home() {
     }
 
     try {
-      if (chainId !== selectedChain.id) {
-        await switchChainAsync({ chainId: selectedChain.id });
-      }
+      if (window.ethereum && chainId !== selectedChain.id) {
+  await window.ethereum.request({
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: "0x2105" }]
+  });
+}
 
       const attestationRes = await fetch("/api/attestation", {
         method: "POST",
@@ -291,7 +297,7 @@ export default function Home() {
             </div>
 
             <div className="space-y-2">
-              {leaders.map((leader, index) => (
+              {leaders.slice(0, 20).map((leader, index) => (
                 <div
                   key={leader.wallet}
                   className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2 text-sm"
