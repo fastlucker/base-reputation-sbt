@@ -1,9 +1,15 @@
 "use client";
-import { useSwitchChain } from "wagmi";
+
 import { useEffect, useMemo, useState } from "react";
 import { getAddress, isAddress, parseEther } from "viem";
 import { base, baseSepolia } from "wagmi/chains";
-import { useAccount, useChainId, useConnect, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useConnect,
+  useSwitchChain,
+  useWriteContract
+} from "wagmi";
 import { MINT_PRICE_ETH, scoreContractAbi, scoreContractAddress } from "@/lib/contract";
 
 type ScoreResponse = {
@@ -51,8 +57,8 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { connect, connectors, isPending: isConnecting } = useConnect();
+  const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync, isPending: isMinting } = useWriteContract();
-const { switchChainAsync } = useSwitchChain();
 
   const selectedChain = process.env.NEXT_PUBLIC_CHAIN === "base" ? base : baseSepolia;
 
@@ -60,6 +66,8 @@ const { switchChainAsync } = useSwitchChain();
     if (!isAddress(walletInput)) return null;
     return getAddress(walletInput);
   }, [walletInput]);
+
+  const isWrongChain = isConnected && Boolean(chainId) && chainId !== selectedChain.id;
 
   const shareText = score
     ? `I scored ${score.score} (${score.category}) on Base.\n\nCheck your onchain resume 👇`
@@ -95,6 +103,7 @@ const { switchChainAsync } = useSwitchChain();
     }
 
     setIsScoring(true);
+
     try {
       const res = await fetch("/api/score", {
         method: "POST",
@@ -129,9 +138,10 @@ const { switchChainAsync } = useSwitchChain();
     }
 
     try {
-if (chainId !== selectedChain.id) {
-  await switchChainAsync({ chainId: selectedChain.id });
-}
+      if (chainId !== selectedChain.id) {
+        await switchChainAsync({ chainId: selectedChain.id });
+      }
+
       const attestationRes = await fetch("/api/attestation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,7 +153,7 @@ if (chainId !== selectedChain.id) {
           version: score.version,
           payer: address,
           contractAddress: scoreContractAddress,
-          chainId
+          chainId: selectedChain.id
         })
       });
 
@@ -215,9 +225,9 @@ if (chainId !== selectedChain.id) {
                 <p className="text-sm text-white/60">Score</p>
                 <p className="text-5xl font-black">{score.score}</p>
                 <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
-  <span>{badgeMap[score.category]}</span>
-  <span>{score.category}</span>
-</p>
+                  <span>{badgeMap[score.category]}</span>
+                  <span>{score.category}</span>
+                </p>
               </div>
 
               <p className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">{score.version}</p>
@@ -251,8 +261,8 @@ if (chainId !== selectedChain.id) {
                       }`}
                     >
                       <span className="font-semibold">
-  {badgeMap[tier.label]} {tier.label}
-</span>
+                        {badgeMap[tier.label]} {tier.label}
+                      </span>
                       <span>{tier.range}</span>
                     </div>
                   );
@@ -297,12 +307,13 @@ if (chainId !== selectedChain.id) {
                 </div>
               ))}
             </div>
-    <a
-      href="/leaderboard"
-      className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white"
-    >
-      View full leaderboard
-    </a>
+
+            <a
+              href="/leaderboard"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white"
+            >
+              View full leaderboard
+            </a>
           </div>
         )}
 
@@ -320,11 +331,13 @@ if (chainId !== selectedChain.id) {
               Connected payer: {address}
             </p>
           )}
-{chainId !== selectedChain.id && (
-  <p className="mt-2 rounded-xl bg-yellow-500/10 p-3 text-xs text-yellow-200">
-    Please switch your wallet to Base before minting.
-  </p>
-)}
+
+          {isWrongChain && (
+            <p className="rounded-2xl bg-yellow-500/10 p-3 text-xs text-yellow-200">
+              Your wallet is not on Base. We’ll ask you to switch networks before minting.
+            </p>
+          )}
+
           <button
             onClick={mintScore}
             disabled={!score || !isConnected || isMinting}
