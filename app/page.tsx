@@ -12,6 +12,14 @@ import {
 } from "wagmi";
 import { MINT_PRICE_ETH, scoreContractAbi, scoreContractAddress } from "@/lib/contract";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+  }
+}
+
 type ScoreResponse = {
   wallet: `0x${string}`;
   score: number;
@@ -67,10 +75,10 @@ export default function Home() {
     return getAddress(walletInput);
   }, [walletInput]);
 
-const isWrongChain =
-  isConnected &&
-  typeof chainId !== "undefined" &&
-  chainId !== selectedChain.id;
+  const isWrongChain =
+    isConnected &&
+    typeof chainId !== "undefined" &&
+    chainId !== selectedChain.id;
 
   const shareText = score
     ? `I scored ${score.score} (${score.category}) on Base.\n\nCheck your onchain resume 👇`
@@ -78,7 +86,9 @@ const isWrongChain =
 
   const shareUrl =
     score && typeof window !== "undefined"
-      ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.origin)}`
+      ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+          shareText
+        )}&url=${encodeURIComponent(window.location.origin)}`
       : "#";
 
   async function refreshLeaderboard() {
@@ -115,7 +125,10 @@ const isWrongChain =
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error while calculating the score.");
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error while calculating the score.");
+      }
 
       setScore(data);
       await refreshLeaderboard();
@@ -135,17 +148,64 @@ const isWrongChain =
       return;
     }
 
-    if (!scoreContractAddress || scoreContractAddress === "0x0000000000000000000000000000000000000000") {
+    if (
+      !scoreContractAddress ||
+      scoreContractAddress === "0x0000000000000000000000000000000000000000"
+    ) {
       setError("Missing contract address. Set NEXT_PUBLIC_SCORE_CONTRACT_ADDRESS.");
       return;
     }
 
     try {
-if (chainId !== selectedChain.id) {
-  await switchChainAsync({ chainId: selectedChain.id });
-  setError("Network switched to Base. Please click mint again.");
-  return;
-}
+      const ethereum = window.ethereum;
+
+      if (!ethereum) {
+        setError("No wallet provider found.");
+        return;
+      }
+
+      const walletChainIdHex = await ethereum.request({
+        method: "eth_chainId"
+      });
+
+      const walletChainId = Number.parseInt(walletChainIdHex as string, 16);
+
+      if (walletChainId !== selectedChain.id) {
+        await ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: `0x${selectedChain.id.toString(16)}` }]
+        });
+
+        setError("Network switched to Base. Please click mint again.");
+        return;
+      }
+
+      const confirmedWalletChainIdHex = await ethereum.request({
+        method: "eth_chainId"
+      });
+
+      const confirmedWalletChainId = Number.parseInt(
+        confirmedWalletChainIdHex as string,
+        16
+      );
+
+      if (confirmedWalletChainId !== selectedChain.id) {
+        setError("Network switch not confirmed. Please switch to Base and click mint again.");
+        return;
+      }
+
+      if (chainId !== selectedChain.id) {
+        try {
+          await switchChainAsync({ chainId: selectedChain.id });
+        } catch {
+          setError("Network switched in wallet. Please click mint again.");
+          return;
+        }
+
+        setError("Network switched to Base. Please click mint again.");
+        return;
+      }
+
       const attestationRes = await fetch("/api/attestation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,7 +222,10 @@ if (chainId !== selectedChain.id) {
       });
 
       const attestation = await attestationRes.json();
-      if (!attestationRes.ok) throw new Error(attestation.error || "Attestation error.");
+
+      if (!attestationRes.ok) {
+        throw new Error(attestation.error || "Attestation error.");
+      }
 
       const hash = await writeContractAsync({
         address: scoreContractAddress,
@@ -196,7 +259,8 @@ if (chainId !== selectedChain.id) {
         <h1 className="text-3xl font-bold tracking-tight">Base Reputation Score</h1>
 
         <p className="mt-3 text-sm leading-6 text-white/70">
-          Your onchain resume on Base. Analyze any wallet, get a reputation score, and mint it onchain.
+          Your onchain resume on Base. Analyze any wallet, get a reputation score, and mint it
+          onchain.
         </p>
 
         <p className="mt-2 text-xs text-white/50">
@@ -234,7 +298,9 @@ if (chainId !== selectedChain.id) {
                 </p>
               </div>
 
-              <p className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">{score.version}</p>
+              <p className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+                {score.version}
+              </p>
             </div>
 
             <a
@@ -324,7 +390,14 @@ if (chainId !== selectedChain.id) {
         <div className="mt-6 space-y-3">
           {!isConnected ? (
             <button
-              onClick={() => connect({ connector: connectors[0] })}
+              onClick={() => {
+                if (!connectors[0]) {
+                  setError("No wallet connector available.");
+                  return;
+                }
+
+                connect({ connector: connectors[0] });
+              }}
               disabled={isConnecting || connectors.length === 0}
               className="w-full rounded-2xl border border-blue-400/50 bg-blue-400/10 px-4 py-3 font-semibold text-blue-200 disabled:opacity-50"
             >
@@ -336,9 +409,11 @@ if (chainId !== selectedChain.id) {
             </p>
           )}
 
-          {isWrongChain && (
+          {isConnected && (
             <p className="rounded-2xl bg-yellow-500/10 p-3 text-xs text-yellow-200">
-              Your wallet is not on Base. We’ll ask you to switch networks before minting.
+              {isWrongChain
+                ? "Wrong network detected. Click mint to switch to Base."
+                : "Mint requires Base network. If your wallet is on another chain, we’ll ask you to switch before minting."}
             </p>
           )}
 
