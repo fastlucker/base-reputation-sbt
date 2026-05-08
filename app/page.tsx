@@ -12,13 +12,9 @@ import {
 } from "wagmi";
 import { MINT_PRICE_ETH, scoreContractAbi, scoreContractAddress } from "@/lib/contract";
 
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-    };
-  }
-}
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+};
 
 type ScoreResponse = {
   wallet: `0x${string}`;
@@ -157,7 +153,7 @@ export default function Home() {
     }
 
     try {
-      const ethereum = window.ethereum;
+      const ethereum = window.ethereum as EthereumProvider | undefined;
 
       if (!ethereum) {
         setError("No wallet provider found.");
