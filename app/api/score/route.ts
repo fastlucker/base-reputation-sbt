@@ -1,4 +1,4 @@
-import { addScore } from "@/lib/leaderboard";
+import { addScore, getAllLeaderboardEntries } from "@/lib/leaderboard";
 import { scoreLimiter } from "@/lib/ratelimit";
 import { NextResponse } from "next/server";
 import { getAddress, isAddress, keccak256, stringToBytes } from "viem";
@@ -203,6 +203,52 @@ function calculateScore(transfers: AlchemyTransfer[]) {
   };
 }
 
+type MetricRank = {
+  value: number;
+  rank: number;
+  total: number;
+  percentile: number;
+  topPercent: number;
+  label: string;
+};
+
+function calculateMetricRanks(
+  currentBreakdown: Record<string, number | string>,
+  allBreakdowns: Record<string, number | string>[]
+) {
+  const metricRanks: Record<string, MetricRank> = {};
+
+  for (const [metric, rawValue] of Object.entries(currentBreakdown)) {
+    if (typeof rawValue !== "number") continue;
+
+    const values = allBreakdowns
+      .map((breakdown) => breakdown[metric])
+      .filter((value): value is number => typeof value === "number")
+      .sort((a, b) => b - a);
+
+    if (values.length === 0) continue;
+
+    const betterCount = values.filter((value) => value > rawValue).length;
+    const lowerCount = values.filter((value) => value < rawValue).length;
+
+    const rank = betterCount + 1;
+    const total = values.length;
+    const percentile = total <= 1 ? 100 : (lowerCount / total) * 100;
+    const topPercent = Math.max(0.1, Number(((rank / total) * 100).toFixed(1)));
+
+    metricRanks[metric] = {
+      value: rawValue,
+      rank,
+      total,
+      percentile: Number(percentile.toFixed(1)),
+      topPercent,
+      label: `Top ${topPercent}%`
+    };
+  }
+
+  return metricRanks;
+}
+
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
@@ -226,20 +272,29 @@ export async function POST(request: Request) {
     const transfers = await fetchAlchemyTransfers(scoredWallet);
     const score = calculateScore(transfers);
 
-    await addScore(scoredWallet, score.total);
+await addScore(scoredWallet, score.total, score.breakdown);
 
-    const scoreHash = keccak256(
-      stringToBytes(JSON.stringify({ wallet: scoredWallet, score, version: VERSION }))
-    );
+const allLeaderboardEntries = await getAllLeaderboardEntries();
 
-    return NextResponse.json({
-      wallet: scoredWallet,
-      score: score.total,
-      category: score.category,
-      breakdown: score.breakdown,
-      scoreHash,
-      version: VERSION
-    });
+const allBreakdowns = allLeaderboardEntries
+  .map((entry) => entry.breakdown)
+  .filter((breakdown): breakdown is Record<string, number | string> => Boolean(breakdown));
+
+const metricRanks = calculateMetricRanks(score.breakdown, allBreakdowns);
+
+const scoreHash = keccak256(
+  stringToBytes(JSON.stringify({ wallet: scoredWallet, score, version: VERSION }))
+);
+
+return NextResponse.json({
+  wallet: scoredWallet,
+  score: score.total,
+  category: score.category,
+  breakdown: score.breakdown,
+  metricRanks,
+  scoreHash,
+  version: VERSION
+});
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

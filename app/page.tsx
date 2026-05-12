@@ -16,11 +16,21 @@ type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 };
 
+type MetricRank = {
+  value: number;
+  rank: number;
+  total: number;
+  percentile: number;
+  topPercent: number;
+  label: string;
+};
+
 type ScoreResponse = {
   wallet: `0x${string}`;
   score: number;
   category: string;
   breakdown: Record<string, number | string>;
+  metricRanks?: Record<string, MetricRank>;
   scoreHash: `0x${string}`;
   version: string;
 };
@@ -337,13 +347,33 @@ export default function Home() {
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              {Object.entries(score.breakdown).map(([key, value]) => (
-                <div key={key} className="rounded-2xl bg-white/5 p-3">
-                  <p className="text-white/50">{key}</p>
-                  <p className="break-words text-lg font-bold">{String(value)}</p>
-                </div>
-              ))}
+              {Object.entries(score.breakdown).map(([key, value]) => {
+                const metricRank = score.metricRanks?.[key];
+
+                return (
+                  <div key={key} className="rounded-2xl bg-white/5 p-3">
+                    <p className="text-white/50">{key}</p>
+                    <p className="break-words text-lg font-bold">{String(value)}</p>
+
+                    {metricRank && (
+                      <div className="mt-2 space-y-1">
+                        <p className="inline-flex rounded-full bg-blue-500/20 px-2 py-1 text-xs font-semibold text-blue-200">
+                          {metricRank.label}
+                        </p>
+
+                        <p className="text-xs text-white/40">
+                          Rank #{metricRank.rank} / {metricRank.total}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            <p className="mt-3 text-xs text-white/40">
+              Metric ranks are compared with wallets already scored on this app.
+            </p>
 
             <p className="mt-4 break-all text-xs text-white/40">Hash: {score.scoreHash}</p>
           </div>

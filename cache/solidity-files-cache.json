@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\jmama\\Documents\\base-reputation-sbt\\contracts\\BaseReputationSBT.sol": {
-      "lastModificationDate": 1777758703707,
-      "contentHash": "0a377d45a80b919e41c1dcfc13a44e34",
+      "lastModificationDate": 1778601976918,
+      "contentHash": "b5fa2a8c67e34615d5517cd14bd1eda4",
       "sourceName": "contracts/BaseReputationSBT.sol",
       "solcConfig": {
         "version": "0.8.24",

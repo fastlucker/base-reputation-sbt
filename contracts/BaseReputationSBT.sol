@@ -12,7 +12,7 @@ contract BaseReputationSBT is ERC721, Ownable {
     using ECDSA for bytes32;
     using Strings for uint256;
 
-    uint256 public constant MINT_PRICE = 0.0001 ether;
+    uint256 public constant MINT_PRICE = 0.0002 ether;
 
     address public attester;
     address payable public treasury;

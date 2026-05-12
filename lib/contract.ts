@@ -3,7 +3,7 @@ import { zeroAddress } from "viem";
 export const scoreContractAddress =
   (process.env.NEXT_PUBLIC_SCORE_CONTRACT_ADDRESS as `0x${string}` | undefined) || zeroAddress;
 
-export const MINT_PRICE_ETH = "0.0001";
+export const MINT_PRICE_ETH = "0.0002";
 
 export const scoreContractAbi = [
   {
